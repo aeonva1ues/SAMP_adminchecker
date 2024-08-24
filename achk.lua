@@ -11,6 +11,11 @@ local COLOR_WARNING = 0xFFD700
 local FONT = renderCreateFont("Georgia", 8, 0)
 local active = false
 
+local audio = loadAudioStream("moonloader/sound/turnon.mp3")
+local admin_pursuit_active = true
+local pursuit_nick = "Tatyana_Phoenix"
+local target_online = false
+
 local window_width, window_height = getScreenResolution()
 local FILE_PATH = "moonloader/admins.txt"
 local ADMIN_LIST = {}
@@ -23,13 +28,27 @@ function loadAdminList()
     collectgarbage()
     local file = io.open(FILE_PATH, "r")
     local nickname = file:read("*line")
+    local founded = false
     while nickname do
         nickname:gsub("%s+", "")
+        if nickname == pursuit_nick then
+            if target_online then
+                -- sound and picture add
+                setAudioStreamState(audio, 1)
+                setAudioStreamVolume(audio, 100)
+            else
+                target_online = true
+            end
+            founded = true
+        end
         table.insert(ADMIN_LIST, nickname)
         ADMIN_LIST[nickname] = true
         nickname = file:read("*line")
     end
     file:close()
+    if not founded then
+        target_online = false
+    end
     sampAddChatMessage(u8:decode"Загружено админов: " .. tostring(#ADMIN_LIST), COLOR_AQUA)
 end
 
@@ -41,6 +60,7 @@ function helloMessage()
     sampAddChatMessage("- /chk to show/hide admin list", COLOR_WARNING)
     sampAddChatMessage("- /cre to enable/disable recon checker", COLOR_WARNING)
     sampAddChatMessage("- /aupd to update admin list", COLOR_WARNING)
+    sampAddChatMessage("- /ap_set ID to set pursuit admin nickname", COLOR_WARNING)
 end
 
 function getAdminList()
@@ -72,13 +92,18 @@ function reconChecker()
     printStyledString(u8:decode"Скоро будет доступно", 2000, 7)
 end
 
+function adminPursuitSet(new_nickname)
+    pursuit_nick = new_nickname
+end
+
 function main()
-    if not isSampLoaded or not isSampfuncsLoaded then return end
-    while not isSampAvailable() do wait(0) end
+    -- if not isSampLoaded or not isSampfuncsLoaded then return end
+    while not isSampAvailable() do wait(3000) end
     helloMessage()
     sampRegisterChatCommand("chk", showAdminList)
     sampRegisterChatCommand("cre", reconChecker)
     sampRegisterChatCommand("aupd", loadAdminList)
+    sampRegisterChatCommand("ap_set", adminPursuitSet)
     while true do 
         wait(0)
         if active then
