@@ -8,12 +8,21 @@ local u8 = encoding.UTF8
 
 local COLOR_AQUA = 0x7FFFD4
 local COLOR_WARNING = 0xFFD700
+local COLOR_RED = 0xFF0000
 local FONT = renderCreateFont("Georgia", 8, 0)
 local active = false
 
+local CONFIG_PATH = "moonloader/config/"
+function loadPursuitNick()
+    local file = io.open(CONFIG_PATH .. "pursuit_admin.txt", "r")
+    local nickname = file:read("*line")
+    file:close()
+    sampAddChatMessage(u8:decode"Бос загружен: " .. nickname, COLOR_RED)
+    return nickname
+end
+
 local audio = loadAudioStream("moonloader/sound/turnon.mp3")
-local admin_pursuit_active = true
-local pursuit_nick = "Tatyana_Phoenix"
+local pursuit_nick = loadPursuitNick()
 local target_online = false
 
 local window_width, window_height = getScreenResolution()
@@ -28,27 +37,13 @@ function loadAdminList()
     collectgarbage()
     local file = io.open(FILE_PATH, "r")
     local nickname = file:read("*line")
-    local founded = false
     while nickname do
         nickname:gsub("%s+", "")
-        if nickname == pursuit_nick then
-            if target_online then
-                -- sound and picture add
-                setAudioStreamState(audio, 1)
-                setAudioStreamVolume(audio, 100)
-            else
-                target_online = true
-            end
-            founded = true
-        end
         table.insert(ADMIN_LIST, nickname)
         ADMIN_LIST[nickname] = true
         nickname = file:read("*line")
     end
     file:close()
-    if not founded then
-        target_online = false
-    end
     sampAddChatMessage(u8:decode"Загружено админов: " .. tostring(#ADMIN_LIST), COLOR_AQUA)
 end
 
@@ -65,13 +60,25 @@ end
 
 function getAdminList()
     local founded = {u8:decode"Админы в сети:"}
+    local pursuit_founded = false
     for id = 0, 1000 do
         if sampIsPlayerConnected(id) then
             nickname = sampGetPlayerNickname(id)
+            if nickname == pursuit_nick then
+                if not target_online then
+                    setAudioStreamState(audio, 1)
+                    setAudioStreamVolume(audio, 100)
+                    target_online = true
+                end
+                pursuit_founded = true
+            end
             if ADMIN_LIST[nickname] then
                 table.insert(founded, "[" .. tostring(id) .. "] " .. nickname)
             end
         end
+    end
+    if not pursuit_founded then
+        target_online = false
     end
     if #founded == 1 then
         return u8:decode"Админов нет в сети"
@@ -93,11 +100,14 @@ function reconChecker()
 end
 
 function adminPursuitSet(new_nickname)
-    pursuit_nick = new_nickname
+    local file = io.open(CONFIG_PATH .. "pursuit_admin.txt", "w")
+    file:write(new_nickname)
+    file:close()
+    target_online = false
+    sampAddChatMessage(u8:decode"Новый бос установлен: " .. new_nickname, COLOR_RED)
 end
 
 function main()
-    -- if not isSampLoaded or not isSampfuncsLoaded then return end
     while not isSampAvailable() do wait(3000) end
     helloMessage()
     sampRegisterChatCommand("chk", showAdminList)
